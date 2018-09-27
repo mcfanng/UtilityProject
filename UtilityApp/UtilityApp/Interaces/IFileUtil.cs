@@ -3,12 +3,13 @@ namespace UtilityApp.Interfaces
 {
     public interface IFileUtil {
         /// <summary>
-        /// Finds a file matching the exact Filename passed in.
+        /// Finds a file(s) matching the pattern passed in.
         /// </summary>
-        /// <param name="filenameToSearchFor">The Filename of the file to find.</param>
+        /// <param name="filenameOrPatternToSearchFor">The Filename or Pattern of the file to find.</param>
         /// <param name="searchPaths">The searchPaths to recursively look through.</param>
-        /// <returns>Returns the paths of the file to search for.</returns>
-        string [] FindFile(string filenameToSearchFor, params string[] searchPaths);
+        /// <returns>Returns the paths of the file(s) to search for.</returns>
+        string [] FindFile(string filenameOrPatternToSearchFor, params string[] searchPaths);
+        void RunFileUtil();
 
         /// <summary>
         /// Finds a folder matching the exact folderName passed in.
@@ -17,14 +18,6 @@ namespace UtilityApp.Interfaces
         /// <param name="searchPaths">The searchPaths to recursively look through.</param>
         /// <returns>Returns the path of the folder to search for.</returns>
         string FindFolder(string folderName, params string[] searchPaths);
-
-        /// <summary>
-        /// Finds files matching the FilenamePattern passed in.
-        /// </summary>
-        /// <param name="FilenamePattern">The pattern of the Filename to look for.</param>
-        /// <param name="searchPaths">The searchPaths to recursively look through.</param>
-        /// <returns>Returns the paths of files that match the pattern.</returns>
-        string[] FindFiles(string FilenamePattern, params string[] searchPaths);
 
         /// <summary>
         /// Appends any files found in the given search paths with the suffix given.
