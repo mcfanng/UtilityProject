@@ -1,7 +1,10 @@
 
+using UtilityApp.Models;
+
 namespace UtilityApp.Interfaces
 {
     public interface IFileUtil {
+          void RunFileUtil();
         /// <summary>
         /// Finds a file(s) matching the pattern passed in.
         /// </summary>
@@ -9,15 +12,27 @@ namespace UtilityApp.Interfaces
         /// <param name="searchPaths">The searchPaths to recursively look through.</param>
         /// <returns>Returns the paths of the file(s) to search for.</returns>
         string [] FindFile(string filenameOrPatternToSearchFor, params string[] searchPaths);
-        void RunFileUtil();
+        /// <summary>
+        /// Finds a file(s) matching the pattern passed in.
+        /// </summary>
+        /// <param name="searchModel">The Model containing the search criteria.</param>
+        /// <returns>Returns the path(s) of the file to search for.</returns>
+        string[] FindFile(SearchModel searchModel);
 
         /// <summary>
         /// Finds a folder matching the exact folderName passed in.
         /// </summary>
         /// <param name="folderName">The folderName of the folder to find.</param>
         /// <param name="searchPaths">The searchPaths to recursively look through.</param>
-        /// <returns>Returns the path of the folder to search for.</returns>
-        string FindFolder(string folderName, params string[] searchPaths);
+        /// <returns>Returns the path(s) of the folder to search for.</returns>
+        string[] FindFolder(string folderName, params string[] searchPaths);
+
+        /// <summary>
+        /// Finds a folder(s) matching the exact folderName passed in.
+        /// </summary>
+        /// <param name="searchModel">The Model containing the search criteria.</param>
+        /// <returns>Returns the path(s) of the folder to search for.</returns>
+        string[] FindFolder(SearchModel searchModel);
 
         /// <summary>
         /// Appends any files found in the given search paths with the suffix given.

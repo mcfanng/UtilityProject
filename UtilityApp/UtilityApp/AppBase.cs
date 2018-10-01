@@ -5,5 +5,6 @@
         protected const string BeginingOfLineIndicator = "> ";
         protected string Title { get; set; }
         protected string Menu { get; set; }
+        protected bool GoBack { get; set; }
     }
 }
