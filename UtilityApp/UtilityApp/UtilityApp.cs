@@ -28,7 +28,7 @@ namespace UtilityApp
             while (true)
             {
                 Console.WriteLine(_menu);
-                Console.Write(_beginingOfLineIndicator);
+                Console.Write(BeginingOfLineIndicator);
                 var val = Console.ReadLine().ToUpper();
 
                 switch (val)
@@ -71,7 +71,6 @@ namespace UtilityApp
  | |  | |  __/ | | | |_| |    'File' for File Options.
  |_|  |_|\___|_| |_|\__,_|    'Exit' to exit.
  (Menu)                   ==============================================================================================================";
-        private const string _beginingOfLineIndicator = "> ";
 
         #endregion
 

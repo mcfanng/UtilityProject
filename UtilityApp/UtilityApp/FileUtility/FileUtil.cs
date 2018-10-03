@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using UtilityApp.Interfaces;
 using UtilityApp.Models;
 
@@ -21,83 +22,6 @@ namespace UtilityApp.FileUtility
             Title = _title;
         }
 
-        public void AlterFilenameOfFiles(string changeFromPattern, string changeToPattern, bool searchRecursively = false, params string[] searchPaths)
-        {
-            throw new System.NotImplementedException();
-        }
-
-        public void AppendFilenameOfFiles(string filenameSuffix, bool searchRecursively = false, params string[] searchPaths)
-        {
-            throw new System.NotImplementedException();
-        }
-
-        public string[] FindFile(string filenameOrPatternToSearchFor, params string[] searchPaths)
-        {
-            string path = "";
-            List<string> paths = new List<string>();
-            foreach (var item in searchPaths)
-            {
-
-                DirectoryInfo info = new DirectoryInfo(item);
-                if (!info.Exists)
-                {
-                    _logger.LogInformation($"{item}: Directory doesn't exist.");
-                    continue;
-                }
-                var childDirectories = info.EnumerateDirectories();
-                if (childDirectories.Count() > 0)
-                {
-
-                    paths.AddRange(FindFile(filenameOrPatternToSearchFor, childDirectories.Select(m => m.FullName).ToArray()));
-                }
-                else
-                {
-                    paths.AddRange(info.EnumerateFiles(filenameOrPatternToSearchFor).Select(m => m.FullName));
-                }
-            }
-
-            return paths.ToArray();
-
-        }
-        public string[] FindFile(SearchModel searchModel)
-        {
-            return FindFile(searchModel.NameToSearchFor, searchModel.PathsToSearchThrough);
-        }
-        public string[] FindFolder(string folderName, params string[] searchPaths)
-        {
-            string path = "";
-            List<string> paths = new List<string>();
-            foreach (var item in searchPaths)
-            {
-
-                DirectoryInfo info = new DirectoryInfo(item);
-                if (!info.Exists)
-                {
-                    _logger.LogInformation($"{item}: Directory doesn't exist.");
-                    continue;
-                }
-                var childDirectories = info.EnumerateDirectories();
-                if (childDirectories.Count() > 0)
-                {
-
-                    paths.AddRange(FindFile(folderName, childDirectories.Select(m => m.FullName).ToArray()));
-                }
-                else
-                {
-                    paths.AddRange(info.Parent.EnumerateDirectories(folderName).Select(m => m.FullName));
-                }
-            }
-            return paths.ToArray();
-        }
-        public string[] FindFolder(SearchModel searchModel)
-        {
-            return FindFolder(searchModel.NameToSearchFor, searchModel.PathsToSearchThrough);
-        }
-        public void PrependFilenameOfFiles(string filenamePrefix, bool searchRecursively = false, params string[] searchPaths)
-        {
-            throw new System.NotImplementedException();
-        }
-
         public void RunFileUtil()
         {
             Console.WriteLine(_title);
@@ -106,7 +30,7 @@ namespace UtilityApp.FileUtility
                 Console.WriteLine(_menu);
                 Console.Write(BeginingOfLineIndicator);
                 var val = Console.ReadLine().ToUpper();
-                SearchModel searchModel = new SearchModel();
+                FileFindAndReplaceModel searchModel = new FileFindAndReplaceModel();
                 switch (val)
                 {
                     case "1":
@@ -122,7 +46,7 @@ namespace UtilityApp.FileUtility
                         break;
                     case "3":
                         SetupPathsToSearchThrough(searchModel);
-                        
+
                         break;
                     case "4":
                         SetupPathsToSearchThrough(searchModel);
@@ -140,14 +64,182 @@ namespace UtilityApp.FileUtility
             }
         }
 
+        public void AlterFilenameOfFiles(string filenameOrPatternToSearchFor, string changeFromPattern, string changeToPattern, bool changeFromPatternIsRegex = false, bool overWriteExistingFiles = true, bool searchRecursively = false, params string[] searchPaths)
+        {
+            Regex regex = new Regex(changeFromPattern);
+            var paths = FindFile(new FileFindAndReplaceModel() { PathsToSearchThrough = searchPaths, PatternToSearchFor = filenameOrPatternToSearchFor, SearchForFolders = false, SearchRecursively = searchRecursively });
+            foreach (var path in paths)
+            {
+                var file = new FileInfo(path);
+                var directoryOfFile = file.Directory;
+                var oldFilename = $"{file.Name}.{file.Extension}";
+                var match = regex.Match(file.Name);
 
+                if (!match.Success) {
+                    _logger.LogError($"Couldn't match the regex of: {changeFromPattern} on filename{file.Name}");
+                    continue;
+                }
 
-        private void SetupPathsToSearchThrough(SearchModel searchModel)
+                var newFilename = $"{regex.Replace(oldFilename,changeToPattern)}.{file.Extension}"; 
+                ChangeFileName(overWriteExistingFiles, directoryOfFile, oldFilename, newFilename);
+            }
+        }
+
+        public void AppendFilenameOfFiles(string filenameOrPatternToSearchFor, string filenameSuffix, bool overWriteExistingFiles = true, bool searchRecursively = false, params string[] searchPaths)
+        {
+            var paths = FindFile(new FileFindAndReplaceModel() { PathsToSearchThrough = searchPaths, PatternToSearchFor = filenameOrPatternToSearchFor, SearchForFolders = false, SearchRecursively = searchRecursively });
+
+            foreach (var path in paths)
+            {
+                var file = new FileInfo(path);
+                var directoryOfFile = file.Directory;
+                var oldFilename = $"{file.Name}.{file.Extension}";
+                var newFilename = $"{oldFilename}{filenameSuffix}";
+                ChangeFileName(overWriteExistingFiles, directoryOfFile, oldFilename, newFilename);
+
+            }
+        }
+
+        public void PrependFilenameOfFiles(string filenameOrPatternToSearchFor, string filenamePrefix, bool overWriteExistingFiles = true, bool searchRecursively = false, params string[] searchPaths)
+        {
+            var paths = FindFile(new FileFindAndReplaceModel() { PathsToSearchThrough = searchPaths, PatternToSearchFor = filenameOrPatternToSearchFor, SearchForFolders = false, SearchRecursively = searchRecursively });
+
+            foreach (var path in paths)
+            {
+                var file = new FileInfo(path);
+                var directoryOfFile = file.Directory;
+                var oldFilename = $"{file.Name}.{file.Extension}";
+                var newFilename =$"{filenamePrefix}{oldFilename}";
+
+                ChangeFileName(overWriteExistingFiles, directoryOfFile, oldFilename, newFilename);
+
+            }
+        }
+
+        private void ChangeFileName(bool overWriteExistingFiles, DirectoryInfo directoryOfFile, string oldFilename, string newFilename)
+        {
+            if (File.Exists(Path.Combine(directoryOfFile.FullName, oldFilename)))
+            {
+                if (File.Exists(Path.Combine(directoryOfFile.FullName, newFilename)))
+                {
+                    _logger.LogWarning($"{Path.Combine(directoryOfFile.FullName, newFilename)} : File already exists.");
+                    if (overWriteExistingFiles)
+                    {
+                        _logger.LogInformation($"Overwriting existing file :{Path.Combine(directoryOfFile.FullName, oldFilename)} with {Path.Combine(directoryOfFile.FullName, newFilename)}.");
+                        File.Move(Path.Combine(directoryOfFile.FullName, oldFilename), Path.Combine(directoryOfFile.FullName, newFilename));
+                    }
+                    else
+                    {
+                        _logger.LogInformation($"Skipping rename of :{Path.Combine(directoryOfFile.FullName, oldFilename)} to {Path.Combine(directoryOfFile.FullName, newFilename)}.");
+                    }
+                }
+                else
+                {
+                    _logger.LogInformation($"Renaming {Path.Combine(directoryOfFile.FullName, oldFilename)} to {Path.Combine(directoryOfFile.FullName, newFilename)}");
+                    File.Move(Path.Combine(directoryOfFile.FullName, oldFilename), Path.Combine(directoryOfFile.FullName, newFilename));
+                }
+            }
+            else
+            {
+                _logger.LogError($"{Path.Combine(directoryOfFile.FullName, oldFilename)} : File doesn't exist or is inaccessible.");
+                _logger.LogError($"Can't rename {Path.Combine(directoryOfFile.FullName, oldFilename)} to {Path.Combine(directoryOfFile.FullName, newFilename)}");
+            }
+        }
+
+        public string[] FindFile(string filenameOrPatternToSearchFor, bool searchRecursively = false, params string[] searchPaths)
+        {
+            List<string> paths = new List<string>();
+            foreach (var item in searchPaths)
+            {
+
+                DirectoryInfo info = new DirectoryInfo(item);
+                if (!info.Exists)
+                {
+                    _logger.LogInformation($"{item}: Directory doesn't exist.");
+                    continue;
+                }
+                var childDirectories = info.EnumerateDirectories();
+                if (childDirectories.Count() > 0 && searchRecursively)
+                {
+
+                    paths.AddRange(FindFile(filenameOrPatternToSearchFor, searchRecursively, childDirectories.Select(m => m.FullName).ToArray()));
+                }
+                else
+                {
+                    paths.AddRange(info.EnumerateFiles(filenameOrPatternToSearchFor).Select(m => m.FullName));
+                }
+            }
+
+            return paths.ToArray();
+
+        }
+
+        public string[] FindFile(FileFindAndReplaceModel searchModel)
+        {
+            return FindFile(searchModel.PatternToSearchFor, searchModel.SearchRecursively, searchModel.PathsToSearchThrough);
+        }
+
+        public string[] FindFolder(string folderName, bool searchRecursively = false, params string[] searchPaths)
+        {
+            List<string> paths = new List<string>();
+            foreach (var item in searchPaths)
+            {
+
+                DirectoryInfo info = new DirectoryInfo(item);
+                if (!info.Exists)
+                {
+                    _logger.LogInformation($"{item}: Directory doesn't exist or it is inaccesible.");
+                    continue;
+                }
+                var childDirectories = info.EnumerateDirectories();
+                if (childDirectories.Count() > 0 && searchRecursively)
+                {
+
+                    paths.AddRange(FindFile(folderName, searchRecursively, childDirectories.Select(m => m.FullName).ToArray()));
+                }
+                else
+                {
+                    //If the directory is the root then there isn't a parent directory.
+                    if (info.Root.Name == info.Name)
+                    {
+                        paths.AddRange(info.EnumerateDirectories(folderName).Select(m => m.FullName));
+                    }
+                    else
+                    {
+                        paths.AddRange(info.Parent.EnumerateDirectories(folderName).Select(m => m.FullName));
+                    }
+                }
+            }
+            return paths.Distinct().ToArray();
+        }
+
+        public string[] FindFolder(FileFindAndReplaceModel searchModel)
+        {
+            return FindFolder(searchModel.PatternToSearchFor, searchModel.SearchRecursively, searchModel.PathsToSearchThrough);
+        }
+
+        private void SetupPathsToSearchThrough(FileFindAndReplaceModel searchModel)
         {
             Console.Write($"Enter " + (searchModel.SearchForFolders ? "Folder name" : "File name or pattern" + " to search for: ") + BeginingOfLineIndicator);
-            searchModel.NameToSearchFor = Console.ReadLine();
+            searchModel.PatternToSearchFor = Console.ReadLine();
             Console.Write("Enter Absolute File path(s) to search through, delimited by | .");
             searchModel.PathsToSearchThrough = Console.ReadLine().Split('|');
+        }
+
+        public void AppendFilenameOfFiles(FileFindAndReplaceModel fileFindAndReplaceModel)
+        {
+            AppendFilenameOfFiles(fileFindAndReplaceModel.PatternToSearchFor, fileFindAndReplaceModel.SuffixToAppend, fileFindAndReplaceModel.OverWriteExistingFiles, fileFindAndReplaceModel.SearchRecursively, fileFindAndReplaceModel.PathsToSearchThrough);
+        }
+
+        public void PrependFilenameOfFiles(FileFindAndReplaceModel fileFindAndReplaceModel)
+        {
+            PrependFilenameOfFiles(fileFindAndReplaceModel.PatternToSearchFor, fileFindAndReplaceModel.SuffixToAppend, fileFindAndReplaceModel.OverWriteExistingFiles, fileFindAndReplaceModel.SearchRecursively, fileFindAndReplaceModel.PathsToSearchThrough);
+
+        }
+
+        public void AlterFilenameOfFiles(FileFindAndReplaceModel fileFindAndReplaceModel)
+        {
+            throw new NotImplementedException();
         }
 
         private const string _title = @"
